@@ -1,7 +1,9 @@
 require('dotenv').config();
 const { execSync } = require('child_process');
+const http = require('http');
 const { Client, LocalAuth } = require('whatsapp-web.js');
 const qrcode = require('qrcode-terminal');
+const QRCode = require('qrcode');
 const cron = require('node-cron');
 const axios = require('axios');
 const cheerio = require('cheerio');
@@ -10,6 +12,7 @@ const {
   PROCESS_NUMBER = '70-029.875/26-08',
   WHATSAPP_GROUP_ID,
   CRON_SCHEDULE = '0 * * * *',
+  QR_PORT,
 } = process.env;
 
 const CONSULTATION_URL = 'https://fazenda.pbh.gov.br/sigede/consulta/';
@@ -26,6 +29,104 @@ function detectChromium() {
 }
 
 const CHROMIUM_PATH = detectChromium();
+
+// ─── QR Web Server ────────────────────────────────────────────────────────────
+
+let currentQR = null;
+let qrConnected = false;
+
+function startQRServer() {
+  if (!QR_PORT) return;
+
+  const server = http.createServer(async (req, res) => {
+    const url = req.url.split('?')[0];
+
+    if (url === '/qr.png') {
+      if (!currentQR) { res.writeHead(204); return res.end(); }
+      const buf = await QRCode.toBuffer(currentQR);
+      res.setHeader('Content-Type', 'image/png');
+      res.setHeader('Cache-Control', 'no-store');
+      return res.end(buf);
+    }
+
+    if (url === '/status') {
+      res.setHeader('Content-Type', 'application/json');
+      return res.end(JSON.stringify({ connected: qrConnected }));
+    }
+
+    res.setHeader('Content-Type', 'text/html; charset=utf-8');
+
+    const CONNECTED_STYLE = 'margin:0;font-family:sans-serif;display:flex;align-items:center;justify-content:center;height:100vh;text-align:center';
+    const CONNECTED_HTML = `<!DOCTYPE html><html><body style="${CONNECTED_STYLE}">
+      <div><h2>&#x2705; WhatsApp Conectado!</h2><p>Pode fechar esta aba.</p></div>
+    </body></html>`;
+
+    if (qrConnected) {
+      return res.end(CONNECTED_HTML);
+    }
+
+    res.end(`<!DOCTYPE html><html>
+      <head>
+        <meta charset="utf-8">
+        <title>Monitor ITBI — QR</title>
+        <script>
+          const CONNECTED_STYLE = '${CONNECTED_STYLE}';
+          let countdown = 60;
+          let qrLoaded = false;
+
+          function showConnected() {
+            document.body.setAttribute('style', CONNECTED_STYLE);
+            document.body.innerHTML = '<div><h2>&#x2705; WhatsApp Conectado!</h2><p>Pode fechar esta aba.</p></div>';
+          }
+
+          function tryRefresh() {
+            const t = Date.now();
+            const test = new Image();
+            test.onload = () => {
+              if (test.naturalWidth === 0) return;
+              document.getElementById('qr').src = '/qr.png?t=' + t;
+              document.getElementById('info').style.display = 'block';
+              document.getElementById('waiting').style.display = 'none';
+              qrLoaded = true;
+              countdown = 60;
+            };
+            test.src = '/qr.png?t=' + t;
+          }
+
+          function tick() {
+            fetch('/status').then(r => r.json()).then(s => {
+              if (s.connected) { showConnected(); return; }
+              if (!qrLoaded) {
+                tryRefresh();
+              } else {
+                countdown--;
+                document.getElementById('count').textContent = countdown;
+                if (countdown <= 0) tryRefresh();
+              }
+              setTimeout(tick, 1000);
+            });
+          }
+          window.onload = () => {
+            fetch('/status').then(r => r.json()).then(s => {
+              if (s.connected) { showConnected(); return; }
+              tryRefresh();
+              setTimeout(tick, 1000);
+            });
+          };
+        </script>
+      </head>
+      <body style="font-family:sans-serif;text-align:center;padding:40px">
+        <h2>&#x1F4F1; Escaneie com o WhatsApp</h2>
+        <img id="qr" style="width:280px;height:280px"><br><br>
+        <small id="waiting">&#x23F3; Aguardando QR Code...</small>
+        <small id="info" style="display:none">Atualizando em <strong><span id="count">60</span>s</strong></small>
+      </body></html>`);
+  });
+
+  server.listen(parseInt(QR_PORT), () => {
+    console.log(`[QR] Acesse http://localhost:${QR_PORT} para escanear o QR Code`);
+  });
+}
 
 let lastStatus = null;
 let waClient = null;
@@ -127,6 +228,8 @@ function initWhatsApp(onReady) {
   });
 
   waClient.on('qr', (qr) => {
+    currentQR = qr;
+    if (QR_PORT) return;
     console.log('\n[WhatsApp] Escaneie o QR Code com seu celular:');
     qrcode.generate(qr, { small: true });
   });
@@ -134,6 +237,7 @@ function initWhatsApp(onReady) {
   waClient.on('ready', () => {
     if (readyFired) return;
     readyFired = true;
+    qrConnected = true;
     console.log('[WhatsApp] Conectado com sucesso!\n');
     isReady = true;
     onReady();
@@ -251,5 +355,6 @@ if (args.includes('--test-scrape')) {
     console.warn('[Aviso] WHATSAPP_GROUP_ID não definido no .env');
     console.warn('        Execute "npm run list-groups" para encontrar o ID do grupo.\n');
   }
+  startQRServer();
   initWhatsApp(startMonitoring);
 }

@@ -39,6 +39,7 @@ monitor-itbi/
 | `PROCESS_NUMBER` | `70-029.875/26-08` | Número do processo ou protocolo ITBI |
 | `WHATSAPP_GROUP_ID` | — | ID do grupo no WhatsApp (ex: `120363...@g.us`) |
 | `CRON_SCHEDULE` | `0 * * * *` | Cron de disparo (padrão: todo `:00` de hora em hora) |
+| `QR_PORT` | — | Porta para escanear o QR Code via browser (ex: `3000`) |
 
 ## Requisitos
 
@@ -74,8 +75,6 @@ npm run list-groups
 npm start
 ```
 
-Após escanear, encerre com `Ctrl+C`.
-
 Para testar o scraper sem WhatsApp:
 
 ```bash
@@ -84,41 +83,48 @@ npm run test-scrape
 
 ## Como rodar com Docker
 
-Executar o container para escanear o QR Code:
+**Subir o container:**
 
 ```bash
-docker compose up
+docker run -d \
+  --name monitor-itbi \
+  --restart unless-stopped \
+  -p 3000:3000 \
+  -e QR_PORT=3000 \
+  -e PROCESS_NUMBER="70-029.875/26-08" \
+  -e WHATSAPP_GROUP_ID="120363...@g.us" \
+  -e CRON_SCHEDULE="0 8-22 * * *" \
+  -v monitor-itbi-auth:/app/.wwebjs_auth \
+  -v monitor-itbi-cache:/app/.wwebjs_cache \
+  diegofnunesbr/monitor-itbi:latest
 ```
 
-Após escanear, encerre com `Ctrl+C`.
-
-Executar o container em background:
-
-```bash
-docker compose up -d
-```
+Acesse `http://localhost:3000`, escaneie o QR Code e aguarde a confirmação. A sessão fica salva nos volumes — nas próximas execuções não é necessário escanear novamente.
 
 Para testar o scraper sem WhatsApp:
 
 ```bash
-docker compose run --rm monitor-itbi node index.js --test-scrape
+docker run --rm \
+  -e PROCESS_NUMBER="70-029.875/26-08" \
+  diegofnunesbr/monitor-itbi:latest node index.js --test-scrape
 ```
 
-## Consultar os logs no container
+## Consultar os logs Docker
 
 ```bash
-docker compose logs -f
+docker logs -f monitor-itbi
 ```
 
-## Parar e remover o container
+## Parar e remover o container Docker
 
 ```bash
-docker compose down
+docker rm -f monitor-itbi
+docker volume rm monitor-itbi-auth monitor-itbi-cache
 ```
 
 ## Publicar no Docker Hub
 
 ```bash
-docker build -t seu-usuario/monitor-itbi:latest .
-docker push seu-usuario/monitor-itbi:latest
+docker build -t diegofnunesbr/monitor-itbi:latest .
+docker push diegofnunesbr/monitor-itbi:latest
 ```
