@@ -1,0 +1,21 @@
+diff --git a/node_modules/whatsapp-web.js/src/Client.js b/node_modules/whatsapp-web.js/src/Client.js
+index 800109e..edcf9c1 100644
+--- a/node_modules/whatsapp-web.js/src/Client.js
++++ b/node_modules/whatsapp-web.js/src/Client.js
+@@ -141,7 +141,15 @@ class Client extends EventEmitter {
+         const pairWithPhoneNumber = this.options.pairWithPhoneNumber;
+         const version = await this.getWWebVersion();
+ 
+-        await this.pupPage.evaluate(ExposeAuthStore);
++        // Retry on "Execution context was destroyed" (WSL2 navigation race condition)
++        for (let _r = 0; _r < 5; _r++) {
++            try { await this.pupPage.evaluate(ExposeAuthStore); break; }
++            catch (e) {
++                if (_r < 4 && e.message && e.message.includes('Execution context was destroyed'))
++                    await new Promise(r => setTimeout(r, 1000));
++                else throw e;
++            }
++        }
+ 
+         const needAuthentication = await this.pupPage.evaluate(async () => {
+             let state = window.require('WAWebSocketModel').Socket.state;
