@@ -273,7 +273,7 @@ async function sendMessage(text) {
 // ─── Monitoring ───────────────────────────────────────────────────────────────
 
 async function checkAndNotify() {
-  console.log(`[Monitor] ${new Date().toLocaleString('pt-BR')} — verificando processo ${PROCESS_NUMBER}...`);
+  console.log(`[Monitor] ${new Date().toLocaleString('pt-BR', { timeZone: 'America/Sao_Paulo' })} — verificando processo ${PROCESS_NUMBER}...`);
 
   const info = await fetchStatus();
 
