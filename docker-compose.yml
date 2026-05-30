@@ -1,6 +1,7 @@
 services:
   monitor-itbi:
     build: .
+    image: monitor-itbi
     container_name: monitor-itbi
     restart: unless-stopped
     env_file:

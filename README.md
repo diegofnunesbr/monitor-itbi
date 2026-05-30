@@ -17,33 +17,6 @@ monitor-itbi/
 └── README.md
 ```
 
-## Requisitos
-
-### Local (Ubuntu / WSL2)
-
-```bash
-curl -fsSL https://deb.nodesource.com/setup_18.x | sudo -E bash - && sudo apt-get install -y nodejs
-sudo apt-get install -y chromium-browser
-```
-
-### Docker
-
-```bash
-curl -fsSL https://get.docker.com | sh
-```
-
-## Configuração
-
-```bash
-cp .env.example .env
-```
-
-Para encontrar o `WHATSAPP_GROUP_ID` antes de iniciar:
-
-```bash
-npm run list-groups
-```
-
 ## Tecnologias
 
 - Node.js 18
@@ -67,10 +40,37 @@ npm run list-groups
 | `WHATSAPP_GROUP_ID` | — | ID do grupo no WhatsApp (ex: `120363...@g.us`) |
 | `CRON_SCHEDULE` | `0 * * * *` | Cron de disparo (padrão: todo `:00` de hora em hora) |
 
+## Requisitos
+
+### Local (Ubuntu / WSL2)
+
+```bash
+curl -fsSL https://deb.nodesource.com/setup_18.x | sudo -E bash - && sudo apt-get install -y nodejs
+sudo apt-get install -y chromium-browser
+```
+
+### Docker
+
+```bash
+curl -fsSL https://get.docker.com | sh
+```
+
+## Configuração
+
+```bash
+cp .env.example .env
+npm install
+```
+
+Para encontrar o `WHATSAPP_GROUP_ID` antes de iniciar:
+
+```bash
+npm run list-groups
+```
+
 ## Como rodar localmente
 
 ```bash
-npm install
 npm start
 ```
 
