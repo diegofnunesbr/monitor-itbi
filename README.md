@@ -99,7 +99,9 @@ docker run -d \
   diegofnunesbr/monitor-itbi:latest
 ```
 
-Acesse `http://localhost:3000`, escaneie o QR Code e aguarde a confirmação. A sessão fica salva nos volumes — nas próximas execuções não é necessário escanear novamente.
+Acesse: http://localhost:3000
+
+Escaneie o QR Code e aguarde a confirmação. A sessão fica salva nos volumes, nas próximas execuções não é necessário escanear novamente.
 
 Para testar o scraper sem WhatsApp:
 
